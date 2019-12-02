@@ -1,21 +1,6 @@
 var fs = require('fs');
 var assert = require('assert');
 
-function basicFuel(mass){
-  // take its mass, divide by three, round down, and subtract 2
-  return Math.floor(mass/3.0) - 2
-}
-
-function totalFuel(mass){
-  const fuel_for_mass = basicFuel(mass);
-  if( fuel_for_mass <= 0 ) return 0;
-  return fuel_for_mass + totalFuel(fuel_for_mass);
-}
-
-const accumulator = (acc,val,fun) => acc+fun(val);
-const basic_func = (acc,val) => accumulator(acc,val,basicFuel)
-const total_func = (acc,val) => accumulator(acc,val,totalFuel)
-
 function run(values){
   // console.log("start = ",values);
   var pos = 0;
@@ -46,47 +31,32 @@ function run(values){
   // console.log("at zero = ",values[0]);
 }
 
+function execute(program, noun, verb){
+    const memory = program.slice(0);
+    memory[1] = noun;
+    memory[2] = verb;
+    run(memory)
+    return memory[0];
+}
+
 // console.log(process.argv);
 filename = process.argv[2];
 fs.readFile(filename, 'utf8', function(err, contents) {
     const texts = contents.split(",");
     const program = texts.map(x => parseInt(x));
 
-    // validate that part one still works
-    var memory = program.slice(0);
-    // replace position 1 with the value 12 and 
-    // replace position 2 with the value 2.
-    memory[1] = 12;
-    memory[2] = 2;
-    run(memory)
-    console.log(memory[0])
-    assert( memory[0] == 6327510 );
+    // test that part one still works
+    assert( execute(program,12,2) == 6327510 );
+    console.log("part one test passed");
 
-    // validate that memory is replaced
-    memory = program.slice(0);
-    // replace position 1 with the value 12 and 
-    // replace position 2 with the value 2.
-    memory[1] = 12;
-    memory[2] = 2;
-    run(memory)
-    console.log(memory[0])
-    assert( memory[0] == 6327510 );
-    
-    // then execute part two, find 19690720
-
-    var noun, verb;
-    for (noun = 0; noun < 100; noun++) {
-      for (verb = 0; verb < 100; verb++) {
-        var memory = program.slice(0);
-        // console.log(noun,verb);
-        memory[1] = noun;
-        memory[2] = verb;
-        run(memory);
+    // then part two, find specific value
+    for (var noun = 0; noun < 100; noun++) {
+      for (var verb = 0; verb < 100; verb++) {
+        const result = execute(program,noun,verb);
         // console.log(memory[0])
-        if( memory[0] == 19690720){
-          console.log(noun,verb);
-          console.error("found it");
-          console.log("answer is ",100 * noun + verb);
+        if( result == 19690720 ){
+          console.log("found it:",noun,verb,"gives",result);
+          console.log("so the answer is ", 100 * noun + verb);
         }
       }
     }
