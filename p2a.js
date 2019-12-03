@@ -1,34 +1,62 @@
 var fs = require('fs');
 var assert = require('assert');
 
+
+
 function run(values){
+
+  const commands = {
+    1 : (m,p) => {
+      console.log("add",p,m[p]);
+      m[p+3] = m[p+1] + m[p+2];
+    },
+    2 : (m,p) => {
+      console.log("mul",p,m[p]);
+      m[p+3] = m[p+1] * m[p+2];
+    },
+  }
+
+  function pprint(title,mem){
+    console.log(title)
+    console.log(mem[0],":",mem[1],mem[2],mem[3])
+    console.log(mem[4],":",mem[5],mem[6],mem[7])
+    console.log(mem[8],":",mem[9],mem[10],mem[11])
+  }
+
   // console.log("start = ",values);
   var pos = 0;
   while( values[pos] != 99 ){
     const opcode = values[pos];
-    const r1 = values[pos+1];
-    const r2 = values[pos+2];
-    const t = values[pos+3];
-    switch(opcode) {
-      case 1: // Addition
-        // console.log("add:",values[r1],values[r2],"=> pos[",t,"]")
-        values[t] = values[r1] + values[r2];
-        break;
-      case 2: // Multiplication
-        // console.log("mul:",values[r1],values[r2],"=> pos[",t,"]")
-        values[t] = values[r1] * values[r2];
-        break;
-      default:
-        console.error("invalid op code = ", opcode);
-        throw new Error();
-        break;
-    }
-    // console.log("result = ",values);
+    // const r1 = values[pos+1];
+    // const r2 = values[pos+2];
+    // const t = values[pos+3];
+
+    pprint("pos: "+pos,values);
+
+    commands[opcode](values,pos);
+
+    console.log(values);
+
+    // switch(opcode) {
+    //   case 1: // Addition
+    //     // console.log("add:",values[r1],values[r2],"=> pos[",t,"]")
+    //     // values[t] = values[r1] + values[r2];
+    //     break;
+    //   case 2: // Multiplication
+    //     // console.log("mul:",values[r1],values[r2],"=> pos[",t,"]")
+    //     commands[opcode](t,r1,r2);
+    //     // values[t] = values[r1] * values[r2];
+    //     break;
+    //   default:
+    //     console.error("invalid op code = ", opcode);
+    //     throw new Error();
+    //     break;
+    // }
     pos += 4;
   }
-  // console.log("program ended!")
-  // console.log("final = ",values);
-  // console.log("at zero = ",values[0]);
+  console.log("program ended!")
+  console.log("final = ",values);
+  console.log("at zero = ",values[0]);
 }
 
 function execute(program, noun, verb){
@@ -46,7 +74,8 @@ fs.readFile(filename, 'utf8', function(err, contents) {
     const program = texts.map(x => parseInt(x));
 
     // test that part one still works
-    assert( execute(program,12,2) == 6327510 );
+    answer = execute(program,12,2);
+    assert( answer == 6327510, answer );
     console.log("part one test passed");
 
     // then part two, find specific value
