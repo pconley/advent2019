@@ -5,7 +5,7 @@ function mdist(x1,y1,x2,y2){
     // calc manhattan distance
     const x = Math.abs(x1-x2);
     const y = Math.abs(y1-y2);
-    console.log(x,y,x+y);
+    // console.log(x,y,x+y);
     return x+y;
 }
 
@@ -18,16 +18,15 @@ filename = process.argv[2];
 fs.readFile(filename, 'utf8', function(err, contents) {
   const points = {}
   const lines = contents.split("\n");
-  lines.forEach((line,index) =>{
-    console.log(line);
-    const moves =  line.split(",");
+  lines.forEach((line,line_number) =>{
+    console.log("line", line_number, line);
+    const moves = line.split(",");
     var pos = origin; // x, y
-    console.log(pos);
     var mcount = 0;
     moves.forEach((move) => {
-      console.log(move[0], parseInt(move.substring(1)));
       const dir = move[0];
       const dist = move.substring(1);
+      console.log(dir, dist);
       for( var i=1; i<=dist; i++){
         mcount += 1;
         if( dir == 'U' ) pos = [pos[0],pos[1]+1];
@@ -35,33 +34,32 @@ fs.readFile(filename, 'utf8', function(err, contents) {
         if( dir == 'R' ) pos = [pos[0]+1,pos[1]];
         if( dir == 'L' ) pos = [pos[0]-1,pos[1]];
         if( !points[pos] ) points[pos] = [0,0];
-        if( points[pos][index] == 0 ){
-          points[pos][index] = mcount;
+        if( points[pos][line_number] == 0 ){
+          // so we only mark the first visit
+          points[pos][line_number] = mcount;
         }
       }
     });
   });
 
-  // console.log(points);
-
   console.log("intersections...");
   var fewest = Number.MAX_SAFE_INTEGER;
   var nearest = Number.MAX_SAFE_INTEGER;
   for (const p in points) {
-    if( points[p][0]>0 && points[p][1]>0 ){
+    const [m1, m2] = points[p];
+    if( m1>0 && m2>0 ){
       // not sure why the p is a string...
-      pos = p.split(",").map(x=>parseInt(x))
-      console.log(pos, points[p])
+      const pos = p.split(",").map(x=>parseInt(x))
       const dist = mdist(...origin,...pos);
-      const moves = points[p][0]+points[p][1];
-      console.log(`${p}: ${points[p]} dist=${dist}  moves=${moves}`);
-      fewest = Math.min(fewest,moves);
+      const total_moves = m1+m2;
+      console.log(`${p}: ${points[p]} dist=${dist}  moves=${total_moves}`);
+      fewest = Math.min(fewest,total_moves);
       nearest = Math.min(nearest,dist);
     }
   }
-  console.log(nearest)
-  console.log(fewest)
-  // test cases
+  console.log(nearest,fewest)
+
+  // expected results for the test cases
   if( filename == "p3-1.data") assert( nearest == 6 )
   if( filename == "p3-2.data"){
     assert( fewest == 610 );
