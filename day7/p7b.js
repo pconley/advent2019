@@ -3,21 +3,12 @@ var fs = require('fs');
 var assert = require('assert');
 var Combinatorics = require('js-combinatorics');
 
-const ADR = 'A';
-const VAL = 'V';
-
-function x(mode){ return mode==0?ADR:VAL; }
-
 function extract(command){
-  return [
-    x(Math.trunc(command / 100) % 10),
-    x(Math.trunc(command / 1000) % 10),
-    x(Math.trunc(command / 10000))
-  ]
+  return [100,1000].map(d=>(Math.trunc(command / d) % 10));
 }
 
 function val(mem,pos,mode){
-  return mode==ADR ? mem[mem[pos]] : mem[pos]
+  return mode==0 ? mem[mem[pos]] : mem[pos]
 }
 
 var output = 999;
@@ -57,16 +48,16 @@ function run(state, input){
     },
   }
 
-  var index = 0;
   var v1, v2;
+  var index = 0;
   var memory = state[0];
-  var pos    = state[1];
+  var pos = state[1];
 
   while( memory[pos] != 99 ){
     const opcode = memory[pos] % 100;
-    const modes = extract(memory[pos]);
-    v1 = val(memory,pos+1,modes[0]);
-    v2 = val(memory,pos+2,modes[1]);
+    const [m1,m2] = extract(memory[pos]);
+    v1 = val(memory,pos+1,m1);
+    v2 = val(memory,pos+2,m2);
     pos = commands[opcode](memory,pos);
     // halt on processed "output" command
     if( opcode == 4 ) return [memory, pos]; 
@@ -75,19 +66,17 @@ function run(state, input){
 }
 
 function run_feedback(program, phases){
-  // state is [memory,pos,output] (so set the start state)
+  // amp state is [memory,pos] (so set the start state)
   const states = _.range(0,6).map(x=>[program.slice(0),0,0]);
   var signal = 0;
-  var amp = 0;
-  while( true ){
+  for( var amp=0; true; amp++ ){
     const i = amp%5;
     inputs = amp<5 ? [phases[i],signal] : [signal];
-    console.log(`*** amp${amp} inputs=${inputs}`);
-    states[i] = run(states[i],inputs);
-    console.log(`    output signal = ${output}`);
+    console.log(`>>> amp${amp} inputs=${inputs}`);
+      states[i] = run(states[i],inputs);
+    console.log(`<<< output signal = ${output}`);
     if( states[i] == null ) return output
     signal = output; // next input
-    amp++;
   }
 }
 
