@@ -48,7 +48,7 @@ function val(mem,pos,mode){
   if( mode == ADR ){
     // mode 0: address mode; aka interpreted as a address
     result = mem[mem[pos]]
-    console.debug(`val: pos=${pos} mode=${mode} reg=${mem[pos]} >> result=${result}`)
+    console.debug(`val: pos=${pos} mode=${mode} addr=${mem[pos]} >> result=${result}`)
   } else {
     // mode 1: immediate mode; aka interpreted as a value
     result = mem[pos]
@@ -114,7 +114,7 @@ function run(memory){
       const v1 = val(m,pos+1,modes[0]);
       if( v1 == 0 ){
         console.log("no jump");
-        return p2+3; // next command
+        return p+3; // next command
       } else {
         const v2 = val(m,pos+2,modes[1]);
         console.log(`jump to ${v2}`);
@@ -130,7 +130,7 @@ function run(memory){
       const v1 = val(m,pos+1,modes[0]);
       if( v1 != 0 ){
         console.log("no jump");
-        return p2+3; // next command
+        return p+3; // next command
       } else {
         const v2 = val(m,pos+2,modes[1]);
         console.log(`jump to ${v2}`);
@@ -148,7 +148,7 @@ function run(memory){
       result = (v1 < v2) ? 1 : 0;
       console.log(`setting ${m[m[p+3]]} to ${result}`)
       m[m[p+3]] = result;
-      return p2+4; // next command
+      return p+4; // next command
     },
     // Opcode 8 is equals: if the first parameter is equal to the second parameter, 
     // it stores 1 in the position given by the third parameter. Otherwise, it stores 0.
@@ -159,9 +159,9 @@ function run(memory){
       const v1 = val(m,pos+1,modes[0]);
       const v2 = val(m,pos+2,modes[1]);
       result = (v1 == v2) ? 1 : 0;
-      console.log(`setting ${m[m[p+3]]} to ${result}`)
+      console.log(`setting pos ${m[p+3]} to ${result}`)
       m[m[p+3]] = result;
-      return p2+4; // next command
+      return p+4; // next command
     },
   }
 
@@ -169,40 +169,78 @@ function run(memory){
   var cnt = 0;
   while( memory[pos] != 99 ){
     cnt += 1;
-    if( cnt > 100 ) break;
+    if( cnt > 1000 ) break; //failsafe
     const opcode = memory[pos] % 100;
     console.log(`\n[${cnt}] pos=${pos}: raw=${memory[pos]} opcode=${opcode}`);
-    // execute the command and get the new position
     pos = commands[opcode](memory,pos);
-    if( opcode == 4 ){
-      if( output == 0){
-        console.log("*** test passed!")
-      } else {
-        if( input==1 && output==13787043){
-          console.log("*** test passed with output = ",output);
-        } else {
-          console.log("*** test failed with output = ",output);
-        }
-        break;
-      }
-    } 
   }
   console.log("program ended!")
 }
 
-function execute(program){
-  // just a wrapper for a restart
+function execute(program, inval){
+  // this wrapper allows multiple executions
   const memory = program.slice(0);
+  input = inval;
   run(memory)
-  return memory[0];
+  return output;
 }
 
-// console.log(process.argv);
+function test(pgm, input, exout){
+  console.log(`\n\n******* test: ${pgm}`)
+  const out = execute(pgm,input); 
+  console.log(`test: output = ${out}`)
+  assert( out == exout );
+}
+
+// Part2: tests
+
+// Using position mode, consider whether the input is equal to 8; output 1 (if it is) or 0 (if it is not).
+const test1 = [3,9,8,9,10,9,4,9,99,-1,8];
+test(test1,8,1); 
+test(test1,9,0);
+// Using position mode, consider whether the input is less than 8; output 1 (if it is) or 0 (if it is not).
+const test2 = [3,9,7,9,10,9,4,9,99,-1,8];
+test(test2,7,1); 
+test(test2,9,0);
+// Using immediate mode, consider whether the input is equal to 8; output 1 (if it is) or 0 (if it is not).
+const test3 = [3,3,1108,-1,8,3,4,3,99];
+test(test3,8,1); 
+test(test3,9,0);
+// Using immediate mode, consider whether the input is less than 8; output 1 (if it is) or 0 (if it is not).
+const test4 = [3,3,1107,-1,8,3,4,3,99];
+test(test4,7,1); 
+test(test4,9,0);
+// Here are some jump tests that take an input, then output 0 if the input was zero or 1 if the input was non-zero:
+const test5 = [3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9] // using position mode
+test(test5,0,0); // input is zero
+test(test5,9,1); // input is NOT zero
+const test6 = [3,3,1105,-1,9,1101,0,0,12,4,12,99,1] // using immediate mode
+test(test6,0,0); // input is zero
+test(test6,9,1); // input is NOT zero
+
+// The next example program uses an input instruction to ask for a single number. The program will then output 999
+// if the input value is below 8, output 1000 if the input value is equal to 8, or output 1001 if the input value is 
+// greater than 8.
+test0 = [3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99];
+test(test0,7, 999); // lt 8
+test(test0,8,1000); // eq 8
+test(test0,9,1001); // gt8
+
+
+// the real challenges are in the file
+
 filename = process.argv[2];
 fs.readFile(filename, 'utf8', function(err, contents) {
     const texts = contents.split(",");
     const program = texts.map(x => parseInt(x));
-    input = 1; // part1 test run
-    answer = execute(program);
-    console.log(answer);
+
+    // console.log("\n\n****** PART 1");
+    // const out1 = execute(program,1); 
+    // console.log(`part 1: output = ${out1}`);
+    // assert( out1 == 13787043 );
+
+    console.log("\n\n****** PART 2");
+    const out2 = execute(program,5); 
+    console.log(`part 2: output = ${out2}`);
+    assert( out2 == 3892695 );
 });
