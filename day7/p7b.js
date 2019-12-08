@@ -3,6 +3,16 @@ var fs = require('fs');
 var assert = require('assert');
 var Combinatorics = require('js-combinatorics');
 
+var log4js = require('log4js');
+var logger = log4js.getLogger();
+logger.level = 'info';
+logger.trace('Entering cheese testing');
+logger.debug('Got cheese.');
+logger.info('Cheese is Comté.');
+logger.warn('Cheese is quite smelly.');
+logger.error('Cheese is too ripe!');
+logger.fatal('Cheese was breeding ground for listeria.');
+
 function extract(command){
   return [100,1000].map(d=>(Math.trunc(command / d) % 10));
 }
@@ -11,78 +21,58 @@ function val(mem,pos,mode){
   return mode==0 ? mem[mem[pos]] : mem[pos]
 }
 
-var output = 999;
+var signal = 0;
 
 function run(state, input){
 
+  function fun4(m,p,res){ m[m[p+3]] = res; return p+4; }
+
+  function comp(m,p,bool){ return bool ? p+3 : v2; }
+
   const commands = {
-    1 : (m,p) => {
-      m[m[p+3]] = v1 + v2;
-      return p+4;
-    },
-    2 : (m,p) => {
-      m[m[p+3]] = v1 * v2;
-      return p+4;
-    },
-    3 : (m,p) => {
-      m[m[p+1]] = input[index++]; 
-      return p+2;
-    },
-    4 : (m,p) => {
-      output = v1;
-      return p+2;
-    },
-    5 : (m,p) => {
-      return v1 == 0 ? p+3 : v2;
-    },
-    6 : (m,p) => {
-      return v1 != 0 ? p+3 : v2;
-    },
-    7 : (m,p) => {
-      m[m[p+3]] = (v1 < v2) ? 1 : 0;;
-      return p+4; 
-    },
-    8 : (m,p) => {
-      m[m[p+3]] = (v1 == v2) ? 1 : 0;;
-      return p+4;
-    },
+    1 : () => { return fun4(mem,pos,v1 + v2) },
+    2 : () => { return fun4(mem,pos,v1 * v2) },
+    7 : () => { return fun4(mem,pos,+(v1 < v2)) },
+    8 : () => { return fun4(mem,pos,+(v1 == v2)) },
+    5 : () => { return comp(mem,pos,(v1 == 0)) },
+    6 : () => { return comp(mem,pos,(v1 != 0)) },
+    3 : () => { 
+      mem[mem[pos+1]] = input[index++];
+      return pos+2; },
+    4 : () => { 
+      signal = v1; // output signal
+      return pos+2; },
   }
 
   var v1, v2;
   var index = 0;
-  var memory = state[0];
+  var mem = state[0];
   var pos = state[1];
 
-  while( memory[pos] != 99 ){
-    const opcode = memory[pos] % 100;
-    const [m1,m2] = extract(memory[pos]);
-    v1 = val(memory,pos+1,m1);
-    v2 = val(memory,pos+2,m2);
-    pos = commands[opcode](memory,pos);
+  while( mem[pos] != 99 ){
+    const opcode = mem[pos] % 100;
+    const [m1,m2] = extract(mem[pos]);
+    v1 = val(mem,pos+1,m1);
+    v2 = val(mem,pos+2,m2);
+    pos = commands[opcode]();
     // halt on processed "output" command
-    if( opcode == 4 ) return [memory, pos]; 
+    if( opcode == 4 ) return [mem, pos]; 
   }
   return null; // program ended 
 }
 
 function run_feedback(program, phases){
+  signal = 0;
   // amp state is [memory,pos] (so set the start state)
-  const states = _.range(0,6).map(x=>[program.slice(0),0,0]);
-  var signal = 0;
-  for( var amp=0; true; amp++ ){
-    const i = amp%5;
-    inputs = amp<5 ? [phases[i],signal] : [signal];
-    console.log(`>>> amp${amp} inputs=${inputs}`);
-      states[i] = run(states[i],inputs);
-    console.log(`<<< output signal = ${output}`);
-    if( states[i] == null ) return output
-    signal = output; // next input
+  const states = _.range(0,6).map(x=>[program.slice(0),0]);
+  for( var count=0; true; count++ ){
+    const i = count%5; // the amp number
+    inputs = count<5 ? [phases[i],signal] : [signal];
+    const result = states[i] = run(states[i],inputs);
+    logger.trace(`${count}: amp[${i}] inputs=${inputs} signal=${signal}`);
+    if( result == null ) return signal
   }
 }
-
-//------------------------------------------------------------------------------
-// 
-//------------------------------------------------------------------------------
 
 filename = process.argv[2];
 fs.readFile(filename, 'utf8', function(err, contents) {
@@ -93,10 +83,11 @@ fs.readFile(filename, 'utf8', function(err, contents) {
 
   var biggie = 0;
   Combinatorics.permutation([5,6,7,8,9]).toArray().forEach(phases=>{
+    logger.debug(phases);
     const signal = run_feedback(program, phases);
     if( signal > biggie ) biggie = signal;
   });
 
-  console.log("biggie = ",biggie)
+  logger.info("biggie = ",biggie)
   assert(biggie == expected_result)
 });
