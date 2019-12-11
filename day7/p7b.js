@@ -74,20 +74,19 @@ function run_feedback(program, phases){
   }
 }
 
-filename = process.argv[2];
-fs.readFile(filename, 'utf8', function(err, contents) {
-  const lines = contents.split("\n");
-  const phases = lines[0].split(",").map(x => parseInt(x));
-  const program = lines[1].split(",").map(x => parseInt(x));
-  const expected_result = parseInt(lines[2]);
+//==== MAINLINE ====//
 
-  var biggie = 0;
-  Combinatorics.permutation([5,6,7,8,9]).toArray().forEach(phases=>{
-    logger.debug(phases);
-    const signal = run_feedback(program, phases);
-    if( signal > biggie ) biggie = signal;
-  });
-
-  logger.info("biggie = ",biggie)
-  assert(biggie == expected_result)
+filename = process.argv[2]; 
+const contents = fs.readFileSync(filename, 'utf8');
+const lines = contents.split("\n");
+const phases = lines[0].split(",").map(x => parseInt(x));
+const program = lines[1].split(",").map(x => parseInt(x));
+const expected_result = parseInt(lines[2]);
+var biggie = 0;
+Combinatorics.permutation([5,6,7,8,9]).toArray().forEach(phases=>{
+  logger.debug(phases);
+  const signal = run_feedback(program, phases);
+  if( signal > biggie ) biggie = signal;
 });
+logger.info("biggie = ",biggie)
+assert(biggie == expected_result)
