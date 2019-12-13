@@ -1,7 +1,7 @@
 var _ = require('lodash');
 var fs = require('fs');
 var assert = require('assert');
-var Combinatorics = require('js-combinatorics');
+// var Combinatorics = require('js-combinatorics');
 
 var log4js = require('log4js');
 var logger = log4js.getLogger();
@@ -55,7 +55,7 @@ function run(mem, pos, input){
   function fun4(m,p,mode,base,res){ set(m,p+3,mode,base,res); return p+4; }
 
   function comp(m,p,mode,base,bool){ 
-    logger.error(`comp: bool=${bool} p+3=${p+3} v2=${v2} v3=${v3}`)
+    logger.trace(`comp: bool=${bool} p+3=${p+3} v2=${v2} v3=${v3}`)
     // const loc = bool ? p+3 : v2;
     const loc = bool ? p+3 : v2;
     logger.info(`jump to ${loc}\n`);
@@ -94,7 +94,7 @@ function run(mem, pos, input){
   var base = 0;
 
   while( mem[pos] != 99 ){
-    logger.trace(`top: ${mem}`);
+    // logger.trace(`top: ${mem}`);
     const opcode = mem[pos] % 100;
     const [m1,m2,m3] = extract(mem[pos]);
     v1 = val(mem,pos+1,m1,base);
@@ -166,37 +166,44 @@ const program = contents.split(",").map(x => parseInt(x));
 output = 998;
 var mem = program.splice(0);
 var pos = 0;
-input_ptr = 0;
-inputs = [BLACK];
+// input_ptr = 0;
+// inputs = [BLACK];
 
 robot_position = [0,0];
 robot_heading = _UP;
 
 hull = {};
-
-for( var loop=0; loop<3; loop++ ){
+for( var loop=0; loop<10000; loop++ ){
   console.log();
-  [mem,pos] = run(mem,pos,inputs);
+
+  input_ptr = 0;
+  const v = hull[robot_position];
+  in_val = v == undefined ? BLACK : v;
+  inputs = [in_val];
+
+  const result1 = run(mem,pos,inputs);
+  if( result1 == null ){
+    console.log("program ended at 1");
+    break;
+  }  
+  [mem, pos] = result1;
   const color_to_paint = output;
 
   console.log(`paint hull ${color(color_to_paint)} at ${robot_position} (facing ${heading(robot_heading)})`);
   const [r,c] = robot_position;
-  hull[10000*r+c] = color_to_paint;
-  console.log(hull);
+  hull[[r,c]] = color_to_paint;
+  console.log(loop,"hull:",Object.keys(hull).length);
 
-  const [m,p] = run(mem,pos,[]);
-  mem = m;
-  pos = p;
+  const result2 = run(mem,pos,[]);
+  if( result2 == null ){
+    console.log("program ended at 2");
+    break;
+  }
+  [mem, pos] = result2;
   const direction_to_turn = output;
 
   console.log(`turn ${direct(direction_to_turn)} from current ${heading(robot_heading)}`)
   robot_heading = turn(robot_heading,direction_to_turn);
   robot_position = move(robot_position, robot_heading);
-
-  input_ptr = 0;
-  const [x,y] = robot_position;
-  const v = hull[10000*x+y];
-  in_val = v == undefined ? BLACK : v;
-  inputs = [in_val];
 }
 
