@@ -54,8 +54,11 @@ function set(mem,pos,mode,base,value){
 }
 
 var output = 999;
+var input_ptr = 0;
+var inputs = [];
 
-function run(mem, pos, input){
+
+function run(mem, pos){
 
   function fun4(m,p,mode,base,res){ set(m,p+3,mode,base,res); return p+4; }
 
@@ -79,8 +82,8 @@ function run(mem, pos, input){
     6 : (modes) => { return comp(mem,pos,modes[2],base,(v1 != 0)) },
 
     3 : (modes) => { 
-      console.log(`INPUT: ${input[input_ptr]}`);
-      set(mem,pos+1,modes[0],base,input[input_ptr]);
+      console.log(`INPUT: ${inputs[input_ptr]}`);
+      set(mem,pos+1,modes[0],base,inputs[input_ptr]);
       input_ptr++;
       return pos+2; },
     4 : (modes) => { 
@@ -94,8 +97,6 @@ function run(mem, pos, input){
   }
 
   var v1, v2, v3;
-  var input_ptr = 0;
-  var base = 0;
 
   while( mem[pos] != 99 ){
     logger.trace(`top: mem[0] = ${mem[0]}, ${mem[1]}`);
@@ -107,7 +108,7 @@ function run(mem, pos, input){
     logger.debug(`${pos}: mem=${mem[pos]} >> opcode=${opcode} op=${names[opcode]} vals=[${v1},${v2}] modes=[${m1},${m2},${m3}] base=${base}`);
     pos = commands[opcode]([m1,m2,m3]);
     // halt on processed "output" command
-    if( opcode == 4 ) return [mem, pos]; 
+    if( opcode == 4 ) return [mem, pos, base]; 
   }
   // console.log("program halted with output=",output);
   return null;
@@ -162,6 +163,7 @@ const program = contents.split(",").map(x => parseInt(x));
 output = 998;
 var mem = program.splice(0);
 var pos = 0;
+var base = 0;
 
 robot_position = [0,0];
 robot_heading = _UP;
@@ -169,33 +171,34 @@ robot_heading = _UP;
 hull = {};
 hull[robot_position] = WHITE; // PART2 start on WHITE
 
-for( var loop=0; loop<10000; loop++ ){
+for( var loop=0; loop<1000; loop++ ){
   console.log();
 
   input_ptr = 0;
   const v = hull[robot_position];
   in_val = v == undefined ? BLACK : v;
+  console.log("set inputs", in_val);
   inputs = [in_val];
 
-  const result1 = run(mem,pos,inputs);
+  const result1 = run(mem,pos,base);
   if( result1 == null ){
     console.log("program ended at 1");
     break;
   }  
-  [mem, pos] = result1;
+  [mem, pos, base] = result1;
   const color_to_paint = output;
 
   console.log(`paint hull ${color(color_to_paint)} at ${robot_position} (facing ${heading(robot_heading)})`);
   const [r,c] = robot_position;
   hull[[r,c]] = color_to_paint;
-  console.log(loop,"hull:",Object.keys(hull).length);
+  console.log(loop,"hull size =",Object.keys(hull).length);
 
-  const result2 = run(mem,pos,[]);
+  const result2 = run(mem,pos,base);
   if( result2 == null ){
     console.log("program ended at 2");
     break;
   }
-  [mem, pos] = result2;
+  [mem, pos, base] = result2;
   const direction_to_turn = output;
 
   console.log(`turn ${direct(direction_to_turn)} from current ${heading(robot_heading)}`)
@@ -203,4 +206,18 @@ for( var loop=0; loop<10000; loop++ ){
   robot_position = move(robot_position, robot_heading);
 }
 
+console.log(hull);
+
+const screen = new Array(100).fill(0).map(() => new Array(100).fill('-'));
+
+Object.keys(hull).forEach(pos => {
+  const [x,y] = pos.split(",").map(x=>parseInt(x));
+  screen[x][y] = hull[pos]==0?" ":"X";
+});
+for( i=0; i<10; i++){
+  console.log(screen[i].splice(0,50).join(""))
+};
+
+
 // Part1: Your puzzle answer was 2160.
+// Part2: LRZECGFE
